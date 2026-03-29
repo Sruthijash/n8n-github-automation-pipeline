@@ -1,0 +1,4 @@
+﻿frontend/build/
+frontend/.dart_tool/
+__pycache__/
+*.pyc
