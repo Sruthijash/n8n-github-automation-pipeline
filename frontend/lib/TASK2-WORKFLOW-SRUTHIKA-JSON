@@ -1,0 +1,186 @@
+{
+  "name": "Task2_Workflow_Sruthika",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/repositories",
+        "sendQueryParameters": true,
+        "queryParameters":{"parameters":[{"name":"q","value":"stars:>25000"},{"name":"sort","value":"stars"},{"name":"order","value":"desc"}]},
+        "options": {}
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef2",
+      "name": "Fetch Top Repositories",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all()[0]?.json?.items || [];\nconst topFive = items.slice(0, 5);\n\nreturn topFive.map(repo => ({\n  json: {\n    id: repo.id,\n    name: repo.name,\n    full_name: repo.full_name,\n    stars: repo.stargazers_count,\n    description: repo.description,\n    url: repo.html_url\n  }\n}));"
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef3",
+      "name": "Filter Top 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.github.com/repos/\" + $json.full_name + \"/languages\" }}",
+        "options": {
+          "failOnHttpStatusCodes": false
+        }
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef4",
+      "name": "Enrich Languages Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "type": "mix",
+            "value1": ""
+          },
+          "conditions": [
+            {
+              "id": "b8fca392-4122-4a0b-93bc-c4667a421299",
+              "leftValue": "={{Object.keys($json).length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef5",
+      "name": "Check Valid Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_DISCORD_WEBHOOK_URL_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"content\": \"🚀 **Daily Tech Digest Notification Summary**\\nRepository Tracked Name: \" + $node[\"Filter Top 5\"].json.full_name + \"\\nTotal Stars Counted: ⭐ \" + $node[\"Filter Top 5\"].json.stars + \"\\nTop Language Node Payload: \" + Object.keys($json)[0] + \"\\nDirect Repository Access URL Link: \" + $node[\"Filter Top 5\"].json.url + \"\"}",
+        "options": {}
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef6",
+      "name": "Send Discord Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1540, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "YOUR_DISCORD_WEBHOOK_URL_HERE",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"content\": \"⚠️ **Workflow Execution Notice Alert**: One repository dataset item encountered structural issues during enrich transformations. Skipping payload parsing routines securely.\"}",
+        "options": {}
+      },
+      "id": "e6f4a8b2-1234-4567-abcd-ef890abcdef7",
+      "name": "Log Partial Error Route",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1540, 420]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Top Repositories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Top Repositories": {
+      "main": [
+        [
+          {
+            "node": "Filter Top 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Top 5": {
+      "main": [
+        [
+          {
+            "node": "Enrich Languages Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Languages Data": {
+      "main": [
+        [
+          {
+            "node": "Check Valid Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Valid Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Discord Digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Partial Error Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": {},
+  "meta": {},
+  "pinData": {},
+  "versionId": ""
+}
